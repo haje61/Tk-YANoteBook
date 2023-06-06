@@ -640,7 +640,7 @@ sub ReleaseCall {
 	delete $self->{MOTION};
 }
 
-=item B<renamePage>I<($old, $new)
+=item B<renamePage>I<($old, $new)>
 
 Rename a page.
 
