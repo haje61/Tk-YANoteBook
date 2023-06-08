@@ -1,4 +1,7 @@
 Revision history for Perl extension Tk::YANoteBook.
 
+0.02  Thur Jun 8 2023
+	Fixed alignment of tabs when tabside is left or right
+
 0.01  Tue Jun 6 2023
 	Initial release

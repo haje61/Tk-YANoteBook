@@ -24,6 +24,8 @@ sub Populate {
 	my $l = $self->Label(
 	)->pack(
 		-side => 'left',
+		-expand => 1,
+		-fill => 'both',
 		-padx => 2,
 		-pady => 6,
 	);
@@ -45,7 +47,7 @@ sub Populate {
 			-command => ['TabClose', $self],
 			-relief => 'flat',
 		)->pack(
-			-side => 'left',
+			-side => 'right',
 			-padx => 2,
 			-pady => 2,
 		);
@@ -69,9 +71,10 @@ sub Populate {
 		-closecall => ['CALLBACK', undef, undef, sub {}],
 		-motioncall => ['CALLBACK', undef, undef, sub {}],
 		-releasecall => ['CALLBACK', undef, undef, sub {}],
+		-relief => ['SELF'],
 		-title => [{-text => $l}],
 		-titleimg => [{-image => $l}],
-		DEFAULT => ['SELF'],
+		DEFAULT => [$l],
 	);
 }
 
@@ -116,7 +119,7 @@ Tk::YANoteBook - Yet another NoteBook widget
 use strict;
 use warnings;
 use vars qw($VERSION);
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 use Tk;
 
@@ -199,23 +202,23 @@ sub Populate {
 	
 	my $tabside = delete $args->{-'tabside'};
 	$tabside = 'top' unless defined $tabside;
+	$self->{TABSIDE} = $tabside;
 
 	my @barpack = ();
 	my @tabpack = ();
 	my $buttonside;
 	if (($tabside eq 'top') or ($tabside eq 'bottom')) {
-		$self->{TABSIDE} = 'left';
-		push @barpack, -side => $tabside, -fill => 'x';
-		push @tabpack, -side => 'left', -fill => 'x', -expand => 1;
+		push @barpack, -side => $tabside, -fill => 'both';
+		@tabpack = (-side => 'left');
 		$buttonside = 'right';
 	} elsif (($tabside eq 'left') or ($tabside eq 'right')) {
-		$self->{TABSIDE} = 'top';
-		push @barpack, -side => $tabside, -fill, 'y';
-		push @tabpack, -side => 'top', -fill => 'y', -expand => 1;
+		push @barpack, -side => $tabside, -fill, 'both';
+		@tabpack = (-side => 'top', -fill => 'x');
 		$buttonside = 'bottom';
 	} else {
 		die "illegal value '$tabside' for -tabside. Must be top, bottom, left or right'"
 	}
+	$self->{TABPACK} = \@tabpack;
 
 	$self->SUPER::Populate($args);
 	
@@ -224,8 +227,10 @@ sub Populate {
 		-borderwidth => 1,
 	)->pack(@barpack);
 
+	my @side = ();
+	@side = (-side => 'left') if (($tabside eq 'top') or ($tabside eq 'bottom'));
 	my $tabframe = $barframe->Frame(
-	)->pack(@tabpack, -expand => 1);
+	)->pack(@side, -expand => 1, -fill =>'both');
 	$self->Advertise('TabFrame' => $tabframe);
 
 	my $morebutton = $barframe->Button(
@@ -262,7 +267,7 @@ sub Populate {
 	my $pageframe = $self->Frame->pack(-side => $tabside, -expand => 1, -fill => 'both');
 	$self->Advertise('PageFrame' => $pageframe);
 
-	$self->bind('<Configure>', [$self, 'UpdateTabs']);
+	$self->bind('<Configure>', [$self, 'ConfigureCall']);
 	$self->{ACTIVE} = 0;
 	$self->{DISPLAYED} = [];
 	$self->{INMAINLOOP} = 0;
@@ -281,7 +286,7 @@ sub Populate {
 		]],
 		-selecttabcall => ['CALLBACK', undef, undef, sub {}],
 		-text => [$morebutton, undef, undef, 'More'],
-		-tabpack => ['PASSIVE', undef, undef, []], 
+		-tabpack => ['PASSIVE', undef, undef, \@tabpack], 
 		-unselectoptions => ['PASSIVE', undef, undef, [
 			-relief => 'flat',
 		]],
@@ -320,6 +325,13 @@ sub addPage {
 	my $self = shift;
 	my $name  = shift;
 	my %opt = (@_);
+
+	my $tabside = $self->{TABSIDE};
+	if ($tabside eq 'left') {
+		$opt{'-anchor'} = 'e'
+	} elsif ($tabside eq 'right') {
+		$opt{'-anchor'} = 'w'
+	}
 	
 	my $title = delete $opt{'-title'};
 	$title = $name unless defined $title;
@@ -352,6 +364,12 @@ sub ClickCall {
 	my ($self, $name) = @_;
 	$self->{ACTIVE} = 1;
 	$self->selectPage($name);
+}
+
+sub ConfigureCall {
+	my $self = shift;
+	$self->UpdateTabs;
+	print "configure called\n";
 }
 
 =item B<deletePage>I<($name)>
@@ -444,7 +462,7 @@ sub IsFull {
 	my $last = $self->lastDisplayed;
 	if (defined $last) {
 		my $tab = $self->getTab($last);
-		if ($self->{TABSIDE} eq 'left') {
+		if (($self->{TABSIDE} eq 'top') or ($self->{TABSIDE} eq 'bottom')) {
 			my $tabwidth = $tab->reqwidth;
 			$tabwidth = $tab->width unless defined $tabwidth;
 			my $pos = $tab->x + $tabwidth;
@@ -457,7 +475,8 @@ sub IsFull {
 			$tabheight = $tab->height unless defined $tabheight;
 			my $pos = $tab->y + $tabheight;
 			$pos = $pos + $newtab->reqheight if defined $newtab;
-			my $tabbarheight = $self->Subwidget('TabFrame')->height - 30;
+			my $bar = $self->Subwidget('TabFrame');
+			my $tabbarheight = $self->Subwidget('TabFrame')->height - 10;
 			$tabbarheight = $tabbarheight + $self->Subwidget('MoreButton')->height if (($self->{MOREBUTTONISPACKED}) and (defined $newtab));
 			return $pos >= $tabbarheight
 		}
@@ -560,7 +579,7 @@ sub MotionCall {
 		}
 		my $nmult = 1.5;
 		my $pmult = -0.5;
-		if (($self->{TABSIDE} eq 'left') or ($self->{TABSIDE} eq 'right')) {
+		if (($self->{TABSIDE} eq 'top') or ($self->{TABSIDE} eq 'bottom')) {
 			my $width = $tab->width;
 			if ($x > ($width * $nmult)) {
 				$self->_MoveNext($name);
@@ -588,11 +607,11 @@ sub MotionSelect {
 sub PackTab {
 	my $self = shift;
 	my $name = shift;
-	my $o = $self->cget('-tabpack');
+	my $o = $self->{TABPACK};
 	my $tabframe = $self->Subwidget('TabFrame');
 	my $tab = $self->getTab($name);
 	$tab->pack(@_, @$o,
-		-side => $self->{TABSIDE},
+# 		-side => $self->{TABPACK},
 	);
 }
 
