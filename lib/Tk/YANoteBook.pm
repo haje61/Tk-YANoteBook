@@ -46,6 +46,7 @@ sub Populate {
 			-image => $closeimage,
 			-command => ['TabClose', $self],
 			-relief => 'flat',
+			-highlightthickness => 0,
 		)->pack(
 			-side => 'right',
 			-padx => 2,
@@ -119,7 +120,7 @@ Tk::YANoteBook - Yet another NoteBook widget
 use strict;
 use warnings;
 use vars qw($VERSION);
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 use Tk;
 
@@ -351,7 +352,7 @@ sub addPage {
 	);
 	my $ud = $self->{UNDISPLAYED};
 	push @$ud, $name;
-	my $page = $self->Subwidget('PageFrame')->Frame;
+	my $page = $self->Subwidget('PageFrame')->Frame(-width => 10, -height => 10);
 
 	my $pages = $self->{PAGES};
 	$self->{PAGES}->{$name} = [$tab, $page];
@@ -368,8 +369,13 @@ sub ClickCall {
 
 sub ConfigureCall {
 	my $self = shift;
-	$self->UpdateTabs;
-	print "configure called\n";
+	# fixing deep recursion issue on UpdateTabs
+	my $afterid = $self->{'ccafterid'};
+
+	$self->afterCancel($afterid) if defined $afterid;
+
+	my $id = $self->after(10, [UpdateTabs => $self]);
+	$self->{'ccafterid'} = $id;
 }
 
 =item B<deletePage>I<($name)>
@@ -467,7 +473,7 @@ sub IsFull {
 			$tabwidth = $tab->width unless defined $tabwidth;
 			my $pos = $tab->x + $tabwidth;
 			$pos = $pos + $newtab->reqwidth if defined $newtab;
-			my $tabbarwidth = $self->Subwidget('TabFrame')->width - 30;
+			my $tabbarwidth = $self->Subwidget('TabFrame')->width - 50;
 			$tabbarwidth = $tabbarwidth + $self->Subwidget('MoreButton')->width if (($self->{MOREBUTTONISPACKED}) and (defined $newtab));
 			return $pos >= $tabbarwidth
 		} else {
@@ -476,7 +482,7 @@ sub IsFull {
 			my $pos = $tab->y + $tabheight;
 			$pos = $pos + $newtab->reqheight if defined $newtab;
 			my $bar = $self->Subwidget('TabFrame');
-			my $tabbarheight = $self->Subwidget('TabFrame')->height - 10;
+			my $tabbarheight = $self->Subwidget('TabFrame')->height - 20;
 			$tabbarheight = $tabbarheight + $self->Subwidget('MoreButton')->height if (($self->{MOREBUTTONISPACKED}) and (defined $newtab));
 			return $pos >= $tabbarheight
 		}
@@ -810,6 +816,7 @@ sub UpdateTabs {
 			$self->{MOREBUTTONISPACKED} = 0;
 		}
 	}
+	delete $self->{'ccafterid'}
 }
 
 =back

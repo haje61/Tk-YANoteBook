@@ -15,10 +15,12 @@ my $nb;
 if (defined $app) {
 	my $frame = $app->Frame->pack(-expand => 1, -fill => 'both');
 	$nb = $frame->YANoteBook(
+		-relief => 'raised',
+		-borderwidth => 2,
 # 		-tabside => 'left',
 # 		-tabside => 'right',
 # 		-tabside => 'bottom',
-	)->pack(-expand => 1, -fill => 'both');
+	)->pack(-side => 'left', -fill => 'both', -expand => 1);
 	for (1 .. 12) {
 		my $num = $_;
 		my $n = "page ";
@@ -29,10 +31,11 @@ if (defined $app) {
 			-width => 40 + $num, 
 			-height => 18 + $num, 
 			-text => $n, 
-	# 		-relief => 'groove',
-		)->pack(-expand => 1, -fill => 'both');
+			-relief => 'groove',
+		)->pack();
 	}
-	$app->geometry('300x200+100+100');
+# 	$frame->Label(-width => 1, -height => 3)->pack(-side => 'left', -fill => 'x');
+	$app->geometry('700x500+100+100');
 }
 
 @tests = (
